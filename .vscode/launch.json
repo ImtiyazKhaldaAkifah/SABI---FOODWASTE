@@ -1,0 +1,11 @@
+   {
+     "version": "0.2.0",
+     "configurations": [
+       {
+         "name": "SABI",
+         "request": "launch",
+         "type": "dart",
+         "toolArgs": ["--dart-define=GEMINI_API_KEY=ISI_KEY_KAMU"]
+       }
+     ]
+   }

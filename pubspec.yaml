@@ -1,0 +1,33 @@
+name: sabi
+description: SABI - Pangan terjaga, bumi bahagia
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^6.2.1
+  provider: ^6.1.2
+  shared_preferences: ^2.2.3
+  camera: ^0.11.0+2
+  tflite_flutter: ^0.12.1
+  image: ^4.2.0
+  http: ^1.2.2
+  flutter_local_notifications: ^17.2.4
+  timezone: ^0.9.4
+  supabase_flutter: ^2.18.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/images/recipes/
+    - assets/model/
