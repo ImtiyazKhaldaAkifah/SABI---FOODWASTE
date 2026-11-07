@@ -2,20 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config.dart';
 import '../models/models.dart';
-import 'backend_service.dart';
 import 'notification_service.dart';
 import 'recipe_ai_service.dart';
 import 'shelf_life.dart';
-import 'translate_service.dart';
 
 class AppState extends ChangeNotifier {
-  /// Stok milik akun yang login (disimpan di tabel stock_items di Supabase).
   final List<FoodItem> items = [];
   String? syncError;
-
-  /// Resep hanya berasal dari AI/backend (tombol "Buat resep dengan AI").
   final List<Recipe> recipes = [];
-
   final Set<String> favorites = {};
   bool aiLoading = false;
   String? aiError;
@@ -25,7 +19,6 @@ class AppState extends ChangeNotifier {
 
   Future<void> init() => load();
 
-  /// Muat stok dari Supabase (dipanggil saat app dibuka dan setelah login).
   Future<void> load() async {
     syncError = null;
     if (!AppConfig.ready || _db.auth.currentUser == null) {
@@ -65,6 +58,7 @@ class AppState extends ChangeNotifier {
     if (AppConfig.ready && _db.auth.currentUser != null) {
       try {
         final row = await _db.from('stock_items').insert({
+          'user_id': _db.auth.currentUser!.id, // <--- INI KUNCI BIAR GAK KE-RESET
           'name': f.name,
           'amount': f.amount,
           'unit': f.unit,
@@ -102,7 +96,6 @@ class AppState extends ChangeNotifier {
     return a.contains(b) || b.contains(a);
   }
 
-  /// Cari stok yang cocok dengan nama bahan (Indonesia ATAU Inggris dari backend).
   FoodItem? stockFor(String ingredient) {
     final ing = ingredient.toLowerCase();
     for (final s in items) {
@@ -119,34 +112,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Rekomendasi resep: utamakan backend buatan tim, kalau gagal baru coba Gemini (kalau key ada).
+  // === INI BAGIAN YANG KITA UBAH (LANGSUNG TEMBAK GEMINI) ===
   Future<void> generateAi({String? focus}) async {
     aiLoading = true;
     aiError = null;
     notifyListeners();
     try {
-      final sorted = items.toList()..sort((a, b) => a.daysLeft.compareTo(b.daysLeft));
-      final en = <String>{};
-      for (final f in sorted) {
-        final e = ShelfLife.toEnglish(f.name);
-        if (e != null) en.add(e);
-      }
-      if (en.isEmpty) throw Exception('Belum ada bahan stok yang dikenali untuk dibuat resep');
-      List<Recipe> r;
-      try {
-        r = await BackendService.recommend(en.toList());
-        r = await TranslateService.translate(r); // Inggris -> Indonesia (aman: kalau gagal tetap Inggris)
-      } catch (backendErr) {
-        try {
-          r = await RecipeAiService.generate(items, focus: focus);
-        } catch (_) {
-          throw Exception('Backend resep tidak terjangkau. Pastikan server jalan dan BACKEND_URL benar. ($backendErr)');
-        }
-      }
+      if (items.isEmpty) throw Exception('Stok bahan masih kosong, tambahkan dulu ya!');
+      
+      // Panggil servis AI
+      final r = await RecipeAiService.generate(items, focus: focus);
+      
       recipes.removeWhere((x) => x.isAi);
       recipes.insertAll(0, r);
     } catch (e) {
-      aiError = '$e';
+      aiError = 'Gagal bikin resep: $e'; 
     }
     aiLoading = false;
     notifyListeners();
