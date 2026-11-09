@@ -169,3 +169,129 @@ class _Corners extends CustomPainter {
   @override
   bool shouldRepaint(_) => false;
 }
+
+// 🔴 BAGIAN INI YANG UDAH DIGANTI JADI FORMULIR BENERAN 🔴
+void showAddItemSheet(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true, // Biar form-nya naik kalau keyboard muncul
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) => const _AddItemForm(),
+  );
+}
+
+class _AddItemForm extends StatefulWidget {
+  const _AddItemForm();
+
+  @override
+  State<_AddItemForm> createState() => _AddItemFormState();
+}
+
+class _AddItemFormState extends State<_AddItemForm> {
+  final _nameController = TextEditingController();
+  final _amountController = TextEditingController();
+  String _selectedCategory = 'Lain-lain';
+
+  final List<String> _categories = ['Sayuran', 'Buah', 'Protein', 'Olahan Susu', 'Tepung', 'Karbohidrat', 'Bumbu', 'Lain-lain'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      // Padding ini biar form-nya kedorong ke atas pas keyboard muncul
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Text('Input Manual Stok', style: ts(size: 18, w: FontWeight.w900)),
+            ),
+            const SizedBox(height: 16),
+            
+            // Input Nama
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'Nama Makanan (cth: Telur, Apel)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            // Input Jumlah
+            TextField(
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Jumlah (cth: 1, 2, 500)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            // Pilih Kategori
+            DropdownButtonFormField<String>(
+              value: _selectedCategory,
+              decoration: InputDecoration(
+                labelText: 'Kategori',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                isDense: true,
+              ),
+              items: _categories.map((cat) {
+                return DropdownMenuItem(value: cat, child: Text(cat));
+              }).toList(),
+              onChanged: (val) {
+                setState(() => _selectedCategory = val!);
+              },
+            ),
+            const SizedBox(height: 20),
+            
+            // Tombol Simpan
+            SizedBox(
+              width: double.infinity,
+              height: 45,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: C.teal,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () async {
+                  final name = _nameController.text.trim();
+                  final amount = int.tryParse(_amountController.text.trim()) ?? 1;
+
+                  if (name.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nama makanan tidak boleh kosong!')));
+                    return;
+                  }
+
+                  // Simpan ke AppState (Database Supabase & Memory)
+                  await context.read<AppState>().addItem(FoodItem(
+                    id: DateTime.now().microsecondsSinceEpoch.toString(),
+                    name: name,
+                    amount: amount,
+                    unit: 'Buah', 
+                    category: _selectedCategory,
+                    emoji: '🍽️', // Emoji default
+                    expiry: DateTime.now().add(const Duration(days: 7)), // Default 7 hari
+                  ));
+
+                  if (context.mounted) {
+                    Navigator.pop(context); // Tutup bottom sheet
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$name berhasil ditambahkan!')));
+                  }
+                },
+                child: const Text('SIMPAN KE STOK', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

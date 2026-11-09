@@ -1,3 +1,4 @@
+import 'dart:async'; // 🔴 TAMBAHAN: Buat nangkep error timeout
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
@@ -5,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class RecipeAiService {
-  static const _key = 'INI_KEY_RAHASIA'; 
+  static const _key = 'INI_KEY_RAHASIA';
   static const _models = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
   static const _cacheKey = 'cached_recipes';
 
@@ -42,7 +43,7 @@ Balas HANYA JSON array dengan format:
               'contents': [{'parts': [{'text': prompt}]}],
               'generationConfig': {'responseMimeType': 'application/json'},
             }),
-          );
+          ).timeout(const Duration(seconds: 30)); // 🔴 TAMBAHAN: Batas waktu 30 detik
 
           if (res.statusCode == 200) {
             final text = jsonDecode(res.body)['candidates'][0]['content']['parts'][0]['text'] as String;
@@ -65,6 +66,11 @@ Balas HANYA JSON array dengan format:
 
           throw Exception('API Google Error (Kode: ${res.statusCode}). Cek limit atau key kamu!');
 
+        } on TimeoutException {
+          // 🔴 TAMBAHAN: Kalau lewat 30 detik, lempar error biar nggak muter terus
+          print('Model $model timeout. Mencoba lagi...');
+          if (attempt == 2) throw Exception('Koneksi lambat atau server Google tidak merespon (Timeout). Coba lagi ya!');
+          
         } catch (e) {
           if (!e.toString().contains('503')) throw Exception(e.toString());
         }
