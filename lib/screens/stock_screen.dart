@@ -14,16 +14,17 @@ class StockScreen extends StatefulWidget {
 class _StockScreenState extends State<StockScreen> {
   String _selectedCategory = 'Semua Stok';
 
+  // 🔴 KITA GANTI IKON JADI EMOJI BIAR LEBIH LUCU & AKURAT 🔴
   final List<Map<String, dynamic>> _categories = [
-    {'name': 'Semua Stok', 'icon': Icons.grid_view_rounded},
-    {'name': 'Sayuran', 'icon': Icons.eco},
-    {'name': 'Buah', 'icon': Icons.local_florist},
-    {'name': 'Protein', 'icon': Icons.egg_alt},
-    {'name': 'Olahan Susu', 'icon': Icons.local_drink},
-    {'name': 'Tepung', 'icon': Icons.rice_bowl},
-    {'name': 'Karbohidrat', 'icon': Icons.bakery_dining},
-    {'name': 'Bumbu', 'icon': Icons.spa},
-    {'name': 'Lain-lain', 'icon': Icons.more_horiz},
+    {'name': 'Semua Stok', 'emoji': '📦'},
+    {'name': 'Sayuran', 'emoji': '🥦'},
+    {'name': 'Buah', 'emoji': '🍎'},
+    {'name': 'Protein', 'emoji': '🍗'},
+    {'name': 'Olahan Susu', 'emoji': '🥛'},
+    {'name': 'Tepung', 'emoji': '🌾'},
+    {'name': 'Karbohidrat', 'emoji': '🍚'},
+    {'name': 'Bumbu', 'emoji': '🧂'},
+    {'name': 'Lain-lain', 'emoji': '🍽️'},
   ];
 
   @override
@@ -32,7 +33,9 @@ class _StockScreenState extends State<StockScreen> {
 
     final filteredItems = s.items.where((item) {
       if (_selectedCategory == 'Semua Stok') return true;
-      return true; 
+      // Filter sederhana berdasarkan nama kategori
+      // (Pastikan kategori di database sama dengan tulisan di _categories)
+      return item.category.toLowerCase() == _selectedCategory.toLowerCase();
     }).toList();
 
     return Scaffold(
@@ -80,7 +83,7 @@ class _StockScreenState extends State<StockScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // SIDEBAR KIRI
+                      // 1. SIDEBAR KIRI (PAKAI EMOJI)
                       Container(
                         width: 90,
                         color: Colors.grey.shade50,
@@ -88,8 +91,6 @@ class _StockScreenState extends State<StockScreen> {
                           itemCount: _categories.length,
                           itemBuilder: (context, index) {
                             final cat = _categories[index];
-                            
-                            // 🔴 INI BAGIAN YANG TADI HILANG 🔴
                             final isSelected = _selectedCategory == cat['name'];
 
                             return GestureDetector(
@@ -112,10 +113,10 @@ class _StockScreenState extends State<StockScreen> {
                                 ),
                                 child: Column(
                                   children: [
-                                    Icon(
-                                      cat['icon'] as IconData,
-                                      color: isSelected ? C.teal : Colors.grey.shade600,
-                                      size: 24,
+                                    // 🔴 GANTI WIDGET ICON JADI TEXT EMOJI 🔴
+                                    Text(
+                                      cat['emoji'],
+                                      style: const TextStyle(fontSize: 28), // Emoji digedein
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
@@ -135,7 +136,7 @@ class _StockScreenState extends State<StockScreen> {
                         ),
                       ),
 
-                      // DAFTAR STOK KANAN
+                      // 2. DAFTAR STOK KANAN
                       Expanded(
                         child: Column(
                           children: [
@@ -147,6 +148,7 @@ class _StockScreenState extends State<StockScreen> {
                                 child: Text('STOK TERSEDIA', style: ts(size: 14, w: FontWeight.w900, color: Colors.white)),
                               ),
                             ),
+                            
                             Expanded(
                               child: filteredItems.isEmpty
                                   ? Center(

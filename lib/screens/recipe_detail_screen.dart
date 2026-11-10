@@ -4,196 +4,276 @@ import '../core/theme.dart';
 import '../models/models.dart';
 import '../services/app_state.dart';
 
-class RecipeDetailScreen extends StatelessWidget {
+class RecipeDetailScreen extends StatefulWidget {
   final Recipe recipe;
   const RecipeDetailScreen({super.key, required this.recipe});
 
-  Widget _title(String t) => Row(children: [
-        const CircleAvatar(radius: 4, backgroundColor: C.teal),
-        const SizedBox(width: 8),
-        Text(t, style: ts(size: 14, w: FontWeight.w900)),
-      ]);
+  @override
+  State<RecipeDetailScreen> createState() => _RecipeDetailScreenState();
+}
+
+class _RecipeDetailScreenState extends State<RecipeDetailScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  // Widget bantuan buat animasi berurutan
+  Widget _buildAnimatedItem(int index, Widget child) {
+    final start = (index * 0.1).clamp(0.0, 0.9);
+    final end = (start + 0.4).clamp(0.0, 1.0);
+    final animation = CurvedAnimation(
+      parent: _controller,
+      curve: Interval(start, end, curve: Curves.easeOutCubic),
+    );
+
+    return FadeTransition(
+      opacity: animation,
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(animation),
+        child: child,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
+    final recipe = widget.recipe;
     final fav = s.favorites.contains(recipe.id);
+
     return Scaffold(
-      body: GradientBg(
+      backgroundColor: C.bgBottom,
+      body: SingleChildScrollView(
         child: Column(
           children: [
+            // --- HEADER GAMBAR ---
             Stack(
+              clipBehavior: Clip.none,
               children: [
                 Container(
-                  color: Colors.black,
-                  height: 210,
+                  height: 250,
                   width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.black87,
+                  ),
+                  // 🔴 BAGIAN GAMBAR YANG DIGANTI 🔴
                   child: Image.network(
-                    'https://image.pollinations.ai/prompt/food%20photography%20of%20${Uri.encodeComponent(recipe.title)}?width=600&height=400&nologo=true&seed=${recipe.title.hashCode}',
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(color: Colors.white),
-                            SizedBox(height: 8),
-                            Text(
-                              'AI sedang menggambar makanan...',
-                              style: TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.restaurant, size: 80, color: Colors.white),
-                            SizedBox(height: 8),
-                            Text(
-                              'Gagal memuat foto. Cek Internet!',
-                              style: TextStyle(color: Colors.white, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                    'https://image.pollinations.ai/prompt/food%20photography%20of%20${Uri.encodeComponent(recipe.title)}?width=800&height=600&nologo=true',
+                    fit: BoxFit.cover, // <--- INI KUNCI BIAR GAK PENYOK
+                    errorBuilder: (_, __, ___) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.restaurant, size: 80, color: Colors.white54),
+                          const SizedBox(height: 10),
+                          Text('Gambar tidak tersedia', style: ts(size: 14, color: Colors.white70, w: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
+                // Tombol Back
                 SafeArea(
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-                Positioned(
-                  left: 14,
-                  bottom: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: C.teal,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      recipe.difficulty.toUpperCase(),
-                      style: ts(size: 11, w: FontWeight.w900, color: Colors.white),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white.withOpacity(0.5),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.black),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ),
                   ),
                 ),
+                // Tombol Love
                 Positioned(
-                  right: 14,
-                  bottom: 12,
+                  right: 16, top: 50,
                   child: GestureDetector(
                     onTap: () => s.toggleFav(recipe.id),
                     child: CircleAvatar(
-                      radius: 16,
-                      backgroundColor: Colors.white,
-                      child: Icon(
-                        fav ? Icons.favorite : Icons.favorite_border,
-                        color: C.red,
-                        size: 20,
-                      ),
+                      radius: 20,
+                      backgroundColor: Colors.white.withOpacity(0.8),
+                      child: Icon(fav ? Icons.favorite : Icons.favorite_border, color: C.red, size: 24),
+                    ),
+                  ),
+                ),
+                // Title Overlapping Image
+                Positioned(
+                  bottom: -30, left: 20, right: 20,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5))],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(recipe.title.toUpperCase(), textAlign: TextAlign.center, style: ts(size: 18, w: FontWeight.w900)),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _statItem(Icons.timer, '${recipe.minutes} Menit', 'Waktu'),
+                            Container(height: 30, width: 1, color: Colors.grey.shade300),
+                            _statItem(Icons.restaurant, '${recipe.servings} Porsi', 'Sajian'),
+                            Container(height: 30, width: 1, color: Colors.grey.shade300),
+                            _statItem(Icons.bar_chart, recipe.difficulty, 'Kesulitan'),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
+
+            const SizedBox(height: 50), 
+
+            // --- KONTEN UTAMA ---
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Text(
-                recipe.title.toUpperCase(),
-                textAlign: TextAlign.center,
-                style: ts(size: 18, w: FontWeight.w900),
-              ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.symmetric(
-                  horizontal: BorderSide(color: C.teal.withOpacity(.6)),
-                ),
-              ),
-              child: Row(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
                 children: [
-                  for (final e in [
-                    ('Estimasi Waktu Memasak:', '${recipe.minutes} Menit'),
-                    ('Prediksi Porsi:', '${recipe.servings} Porsi'),
-                    ('Kompleksitas', recipe.difficulty)
-                  ])
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: C.teal.withOpacity(.4)),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(e.$1, style: ts(size: 8, w: FontWeight.w500)),
-                            Text(e.$2, style: ts(size: 16, w: FontWeight.w500)),
-                          ],
-                        ),
+                  // 1. CARD BAHAN-BAHAN
+                  _buildAnimatedItem(0, 
+                    _buildSectionCard(
+                      title: 'Bahan-bahan',
+                      icon: Icons.shopping_basket,
+                      child: Column(
+                        children: recipe.ingredients.map((ing) {
+                          final st = s.stockFor(ing.name);
+                          final hasStock = st != null;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(hasStock ? Icons.check_circle : Icons.cancel, color: hasStock ? Colors.green : Colors.red, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(ing.name, style: ts(size: 14, w: FontWeight.w700)),
+                                ),
+                                Text(ing.qty, style: ts(size: 14, w: FontWeight.w600, color: Colors.grey.shade600)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(14),
-                children: [
-                  _title('Bahan-bahan'),
-                  const SizedBox(height: 4),
-                  for (final ing in recipe.ingredients)
-                    Builder(
-                      builder: (_) {
-                        final st = s.stockFor(ing.name);
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 16, top: 2),
-                          child: Row(
-                            children: [
-                              Text(ing.name, style: ts(size: 12, w: FontWeight.w500)),
-                              if (st != null)
-                                Text(' (${st.daysLeft} hari lagi)',
-                                    style: ts(size: 12, color: daysColor(st.daysLeft)))
-                              else
-                                Text(' (tidak ada di stok)',
-                                    style: ts(size: 11, color: Colors.grey, w: FontWeight.w500)),
-                              const Expanded(
-                                child: Divider(indent: 4, endIndent: 4, height: 1, color: Colors.black26),
-                              ),
-                              Text(ing.qty, style: ts(size: 12, w: FontWeight.w500)),
-                            ],
-                          ),
-                        );
-                      },
+                  ),
+
+                  // 2. CARD CARA MEMASAK
+                  _buildAnimatedItem(1, 
+                    _buildSectionCard(
+                      title: 'Cara Memasak',
+                      icon: Icons.soup_kitchen,
+                      child: Column(
+                        children: List.generate(recipe.steps.length, (index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: C.teal.withOpacity(0.2),
+                                  child: Text('${index + 1}', style: ts(size: 12, w: FontWeight.w900, color: C.teal)),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(recipe.steps[index], style: ts(size: 14, w: FontWeight.w500).copyWith(height: 1.4)),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ),
                     ),
-                  const SizedBox(height: 14),
-                  _title('Cara Memasak'),
-                  for (var i = 0; i < recipe.steps.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16, top: 3),
-                      child: Text('${i + 1}. ${recipe.steps[i]}',
-                          style: ts(size: 12, w: FontWeight.w500)),
+                  ),
+
+                  // 3. CARD TIP AI
+                  _buildAnimatedItem(2, 
+                    _buildSectionCard(
+                      title: 'Tip AI',
+                      icon: Icons.lightbulb,
+                      child: Column(
+                        children: recipe.tips.map((tip) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.star, color: Colors.orange, size: 16),
+                                const SizedBox(width: 10),
+                                Expanded(child: Text(tip, style: ts(size: 13, w: FontWeight.w600, color: Colors.grey.shade700))),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     ),
-                  const SizedBox(height: 14),
-                  _title('Tip AI'),
-                  for (final t in recipe.tips)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16, top: 3),
-                      child: Text('• $t', style: ts(size: 12, w: FontWeight.w500)),
-                    ),
+                  ),
+                  
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSectionCard({required String title, required IconData icon, required Widget child}) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: C.teal, size: 24),
+              const SizedBox(width: 10),
+              Text(title, style: ts(size: 16, w: FontWeight.w900)),
+            ],
+          ),
+          const Divider(height: 24, thickness: 1),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _statItem(IconData icon, String value, String label) {
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: C.teal),
+        const SizedBox(height: 4),
+        Text(value, style: ts(size: 14, w: FontWeight.w900)),
+        Text(label, style: ts(size: 10, w: FontWeight.w600, color: Colors.grey.shade600)),
+      ],
     );
   }
 }

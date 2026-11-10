@@ -8,6 +8,11 @@ import '../core/theme.dart';
 import '../services/app_state.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
+import 'account_settings_screen.dart'; 
+// 🔴 TAMBAHAN IMPORT BUAT HALAMAN BARU
+import 'about_screen.dart';
+import 'help_screen.dart';
+import 'faq_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -26,7 +31,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfileImage();
   }
 
-  // Ambil foto profil dari memori HP (kalau udah pernah diganti)
   Future<void> _loadProfileImage() async {
     final prefs = await SharedPreferences.getInstance();
     final path = prefs.getString('profile_image_path');
@@ -35,7 +39,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Fungsi buat milih foto dari galeri
   Future<void> _pickImage() async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -69,7 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Text('PROFIL PENGGUNA', style: ts(size: 18, w: FontWeight.w900)),
                 const SizedBox(height: 24),
 
-                // --- CARD USER (FOTO BISA DIKLIK) ---
+                // --- CARD USER ---
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -82,7 +85,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Row(
                     children: [
-                      // Ketuk foto ini buat ganti
                       GestureDetector(
                         onTap: _pickImage,
                         child: Stack(
@@ -100,7 +102,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                               ),
                             ),
-                            // Ikon kamera kecil di pojok foto
                             Positioned(
                               bottom: 0, right: 0,
                               child: Container(
@@ -181,13 +182,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                       const Divider(height: 1),
-                      _menuItem(context, Icons.person_outline, 'Pengaturan Akun'),
+                      _menuItem(context, Icons.person_outline, 'Pengaturan Akun', const AccountSettingsScreen()),
                       const Divider(height: 1),
-                      _menuItem(context, Icons.info_outline, 'Tentang Aplikasi'),
+                      // 🔴 INI YANG UDAH DISAMBUNGIN KE HALAMAN BARU 🔴
+                      _menuItem(context, Icons.info_outline, 'Tentang Aplikasi', const AboutScreen()),
                       const Divider(height: 1),
-                      _menuItem(context, Icons.help_outline, 'Bantuan'),
+                      _menuItem(context, Icons.help_outline, 'Bantuan', const HelpScreen()),
                       const Divider(height: 1),
-                      _menuItem(context, Icons.question_answer_outlined, 'FAQ'),
+                      _menuItem(context, Icons.question_answer_outlined, 'FAQ', const FaqScreen()),
                     ],
                   ),
                 ),
@@ -220,29 +222,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Pas menu diklik, munculin Pop-up (Alert Dialog)
-  Widget _menuItem(BuildContext context, IconData icon, String title) {
+  Widget _menuItem(BuildContext context, IconData icon, String title, [Widget? destination]) {
     return ListTile(
       leading: Icon(icon, color: Colors.black87),
       title: Text(title, style: ts(size: 13, w: FontWeight.w600)),
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
       onTap: () {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Text(title, style: ts(size: 16, w: FontWeight.w900)),
-              content: Text('Halaman $title masih dalam tahap pengembangan oleh developer.', style: ts(size: 13, w: FontWeight.w500)),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('TUTUP', style: ts(size: 13, w: FontWeight.w900, color: C.teal)),
-                ),
-              ],
-            );
-          },
-        );
+        if (destination != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => destination),
+          );
+        } else {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                title: Text(title, style: ts(size: 16, w: FontWeight.w900)),
+                content: Text('Halaman $title masih dalam tahap pengembangan oleh developer.', style: ts(size: 13, w: FontWeight.w500)),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text('TUTUP', style: ts(size: 13, w: FontWeight.w900, color: C.teal)),
+                  ),
+                ],
+              );
+            },
+          );
+        }
       },
     );
   }
