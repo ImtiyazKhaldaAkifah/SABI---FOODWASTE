@@ -17,6 +17,9 @@ class _RecipeScreenState extends State<RecipeScreen> {
   String _selectedSubCategory = 'Semua';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  
+  // 🔴 CONTROLLER BUAT INPUT BAHAN MANUAL
+  final TextEditingController _focusController = TextEditingController(); 
 
   // Daftar menu di sidebar kiri
   final List<Map<String, dynamic>> _filters = [
@@ -81,6 +84,21 @@ class _RecipeScreenState extends State<RecipeScreen> {
           if (!match) return false;
         }
       }
+      else if (_selectedCategory == 'Tipe Masakan') {
+        if (_selectedSubCategory != 'Semua') {
+          final title = recipe.title.toLowerCase();
+          final steps = recipe.steps.join(' ').toLowerCase();
+          final sub = _selectedSubCategory.toLowerCase();
+
+          bool match = false;
+          if (sub == 'goreng' && (title.contains('goreng') || steps.contains('goreng'))) match = true;
+          if (sub == 'tumis' && (title.contains('tumis') || steps.contains('tumis'))) match = true;
+          if (sub == 'rebus' && (title.contains('rebus') || title.contains('kuah') || title.contains('sup') || steps.contains('rebus'))) match = true;
+          if (sub == 'kukus' && (title.contains('kukus') || steps.contains('kukus'))) match = true;
+
+          if (!match) return false;
+        }
+      }
 
       return true; // Lolos semua filter
     }).toList();
@@ -98,8 +116,29 @@ class _RecipeScreenState extends State<RecipeScreen> {
                   Text('REKOMENDASI', style: ts(size: 14, w: FontWeight.w700)),
                   Text('RESEP MASAKAN', style: ts(size: 24, w: FontWeight.w900)),
                   const SizedBox(height: 16),
+                  
+                  // 🔴 KOLOM KETIK BAHAN MANUAL (REQ MENU) 🔴
+                  TextField(
+                    controller: _focusController,
+                    decoration: InputDecoration(
+                      hintText: 'Mau masak apa? (cth: Ayam, Telur)',
+                      hintStyle: ts(size: 12, color: Colors.grey),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      prefixIcon: const Icon(Icons.restaurant_menu, color: Colors.grey, size: 20),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 🔴 TOMBOL AI (UDAH NYAMBUNG KE KOLOM KETIK) 🔴
                   ElevatedButton.icon(
-                    onPressed: () => s.generateAi(),
+                    onPressed: () {
+                      // Ambil teks, kalau kosong kirim null (biar pakai stok otomatis)
+                      final focus = _focusController.text.trim().isEmpty ? null : _focusController.text.trim();
+                      s.generateAi(focus: focus);
+                    },
                     icon: const Icon(Icons.auto_awesome, color: Colors.white, size: 18),
                     label: Text('BUAT RESEP DENGAN AI', style: ts(size: 12, w: FontWeight.w800, color: Colors.white)),
                     style: ElevatedButton.styleFrom(
@@ -218,7 +257,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                                 ),
                               ),
 
-                            // 🔴 LIST RESEP (YANG UDAH DIBENERIN) 🔴
+                            // 🔴 LIST RESEP 🔴
                             Expanded(
                               child: filteredRecipes.isEmpty
                                   ? Center(
@@ -245,7 +284,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                                               const SizedBox(height: 12),
                                               Text('Belum ada resep nih.', style: ts(size: 14, w: FontWeight.w700, color: Colors.grey.shade600)),
                                               const SizedBox(height: 4),
-                                              Text('Klik tombol "BUAT RESEP DENGAN AI" di atas ya!', textAlign: TextAlign.center, style: ts(size: 12, color: Colors.grey.shade500)),
+                                              Text('Ketik bahan atau klik "BUAT RESEP DENGAN AI"', textAlign: TextAlign.center, style: ts(size: 12, color: Colors.grey.shade500)),
                                             ]
                                           ],
                                         ),
@@ -275,7 +314,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
     );
   }
 
-  // 🔴 DESAIN KARTU RESEP (SESUAI GAMBAR) 🔴
+  // 🔴 DESAIN KARTU RESEP 🔴
   Widget _buildRecipeCard(BuildContext context, Recipe recipe, AppState s) {
     // Hitung bahan yang nggak ada di stok (buat ditampilin di card)
     int missingCount = 0;

@@ -2,7 +2,18 @@ class FoodItem {
   final String id, name, unit, category, emoji;
   final int amount;
   final DateTime expiry;
-  FoodItem({required this.id, required this.name, required this.amount, required this.unit, required this.category, required this.emoji, required this.expiry});
+  final DateTime createdAt; // 🔴 TAMBAHAN BUAT BEDAIN KADALUARSA
+
+  FoodItem({
+    required this.id, 
+    required this.name, 
+    required this.amount, 
+    required this.unit, 
+    required this.category, 
+    required this.emoji, 
+    required this.expiry,
+    required this.createdAt, // 🔴 TAMBAHAN
+  });
 
   int get daysLeft {
     final t = DateTime.now();

@@ -9,7 +9,6 @@ import '../services/app_state.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
 import 'account_settings_screen.dart'; 
-// 🔴 TAMBAHAN IMPORT BUAT HALAMAN BARU
 import 'about_screen.dart';
 import 'help_screen.dart';
 import 'faq_screen.dart';
@@ -54,11 +53,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // 🔴 1. FUNGSI HAPUS FOTO
+  Future<void> _deleteImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('profile_image_path');
+    setState(() => _imageFile = null);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Foto profil berhasil dihapus!')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final user = Supabase.instance.client.auth.currentUser;
-    final userName = user?.userMetadata?['full_name'] ?? 'Pengguna SABI';
+    // 🔴 2. NAMA UDAH DIBENERIN
+    final userName = user?.userMetadata?['full_name'] ?? user?.userMetadata?['name'] ?? 'Pengguna SABI';
     final userEmail = user?.email ?? 'email@contoh.com';
 
     return Scaffold(
@@ -102,6 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       ),
                               ),
                             ),
+                            // Ikon Kamera
                             Positioned(
                               bottom: 0, right: 0,
                               child: Container(
@@ -110,6 +123,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
                               ),
                             ),
+                            // 🔴 3. TOMBOL HAPUS FOTO
+                            if (_imageFile != null)
+                              Positioned(
+                                bottom: 0, left: 0,
+                                child: GestureDetector(
+                                  onTap: _deleteImage,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+                                    child: const Icon(Icons.delete, size: 12, color: Colors.white),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -170,27 +196,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.notifications_outlined, color: Colors.black87),
-                        title: Text('Notifikasi Kadaluarsa', style: ts(size: 13, w: FontWeight.w600)),
-                        trailing: Switch(
-                          value: s.notifOn,
-                          activeColor: C.teal,
-                          onChanged: (val) { s.notifOn = val; s.notifyListeners(); },
+                  clipBehavior: Clip.antiAlias,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.notifications_outlined, color: Colors.black87),
+                          title: Text('Notifikasi Kadaluarsa', style: ts(size: 13, w: FontWeight.w600)),
+                          trailing: Switch(
+                            value: s.notifOn,
+                            activeColor: C.teal,
+                            onChanged: (val) { s.notifOn = val; s.notifyListeners(); },
+                          ),
                         ),
-                      ),
-                      const Divider(height: 1),
-                      _menuItem(context, Icons.person_outline, 'Pengaturan Akun', const AccountSettingsScreen()),
-                      const Divider(height: 1),
-                      // 🔴 INI YANG UDAH DISAMBUNGIN KE HALAMAN BARU 🔴
-                      _menuItem(context, Icons.info_outline, 'Tentang Aplikasi', const AboutScreen()),
-                      const Divider(height: 1),
-                      _menuItem(context, Icons.help_outline, 'Bantuan', const HelpScreen()),
-                      const Divider(height: 1),
-                      _menuItem(context, Icons.question_answer_outlined, 'FAQ', const FaqScreen()),
-                    ],
+                        const Divider(height: 1),
+                        _menuItem(context, Icons.person_outline, 'Pengaturan Akun', const AccountSettingsScreen()),
+                        const Divider(height: 1),
+                        _menuItem(context, Icons.info_outline, 'Tentang Aplikasi', const AboutScreen()),
+                        const Divider(height: 1),
+                        _menuItem(context, Icons.help_outline, 'Bantuan', const HelpScreen()),
+                        const Divider(height: 1),
+                        _menuItem(context, Icons.question_answer_outlined, 'FAQ', const FaqScreen()),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),

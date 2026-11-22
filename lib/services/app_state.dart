@@ -49,6 +49,10 @@ class AppState extends ChangeNotifier {
         category: '${r['category']}',
         emoji: '${r['emoji']}',
         expiry: DateTime.parse('${r['expiry']}'),
+        // 🔴 PENGAMAN BUAT DATA LAMA YANG BELUM ADA created_at
+        createdAt: r['created_at'] != null 
+            ? DateTime.parse('${r['created_at']}') 
+            : DateTime.now(),
       );
 
   List<FoodItem> get expiring => (items.where((e) => e.daysLeft <= 4).toList()..sort((a, b) => a.daysLeft.compareTo(b.daysLeft)));
@@ -58,7 +62,7 @@ class AppState extends ChangeNotifier {
     if (AppConfig.ready && _db.auth.currentUser != null) {
       try {
         final row = await _db.from('stock_items').insert({
-          'user_id': _db.auth.currentUser!.id, // <--- INI KUNCI BIAR GAK KE-RESET
+          'user_id': _db.auth.currentUser!.id, 
           'name': f.name,
           'amount': f.amount,
           'unit': f.unit,
@@ -90,6 +94,31 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> updateItem(FoodItem updatedItem) async {
+    if (AppConfig.ready && _db.auth.currentUser != null) {
+      try {
+        await _db.from('stock_items').update({
+          'name': updatedItem.name,
+          'amount': updatedItem.amount,
+          'unit': updatedItem.unit,
+          'category': updatedItem.category,
+          'emoji': updatedItem.emoji,
+          'expiry': updatedItem.expiry.toIso8601String().substring(0, 10),
+        }).eq('id', updatedItem.id);
+      } catch (e) {
+        syncError = '$e';
+        debugPrint('SABI update stok gagal: $e');
+      }
+    }
+    
+    final index = items.indexWhere((e) => e.id == updatedItem.id);
+    if (index != -1) {
+      items[index] = updatedItem;
+      notifyListeners();
+      if (notifOn) await NotificationService.scheduleExpiry(updatedItem);
+    }
+  }
+
   bool _match(String a, String b) {
     a = a.toLowerCase();
     b = b.toLowerCase();
@@ -112,7 +141,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // === INI BAGIAN YANG KITA UBAH (LANGSUNG TEMBAK GEMINI) ===
   Future<void> generateAi({String? focus}) async {
     aiLoading = true;
     aiError = null;
@@ -120,7 +148,6 @@ class AppState extends ChangeNotifier {
     try {
       if (items.isEmpty) throw Exception('Stok bahan masih kosong, tambahkan dulu ya!');
       
-      // Panggil servis AI
       final r = await RecipeAiService.generate(items, focus: focus);
       
       recipes.removeWhere((x) => x.isAi);

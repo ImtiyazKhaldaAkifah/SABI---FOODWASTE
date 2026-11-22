@@ -17,7 +17,8 @@ class HomeScreen extends StatelessWidget {
 
     // Ambil nama user dari database
     final user = Supabase.instance.client.auth.currentUser;
-    final fullName = user?.userMetadata?['full_name'] ?? 'Pengguna';
+        // Cek full_name dulu, kalau kosong cek 'name', kalau dua-duanya kosong baru 'Pengguna'
+    final fullName = user?.userMetadata?['full_name'] ?? user?.userMetadata?['name'] ?? 'Pengguna';
     final firstName = fullName.split(' ')[0]; // Ambil nama depan aja
 
     return Scaffold(

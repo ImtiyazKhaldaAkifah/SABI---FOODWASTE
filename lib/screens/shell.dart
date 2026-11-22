@@ -30,7 +30,7 @@ class _ShellState extends State<Shell> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       HomeScreen(onTab: go),
-      const StockScreen(),
+      StockScreen(onTab: go),
       i == 2 ? ScanScreen(onClose: () => go(0)) : const SizedBox(), // kamera hanya aktif saat tab Input
       const RecipeScreen(),
       const ProfileScreen(),

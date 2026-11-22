@@ -6,9 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class RecipeAiService {
-  static const _key = 'INI_KEY_RAHASIA';
+  static const _key = 'API KEY GOOGLE GEMINI ANDA'; // 🔴 ISI DENGAN API KEY GOOGLE GEMINI ANDA
   // 🔴 MODEL SUDAH DIPERBAIKI
-  static const _models = ['gemini-3.6-flash', 'gemini-3.1-flash-lite']; 
+  static const _models = ['gemini-1.5-flash-latest', 'gemini-1.5-flash']; 
   static const _cacheKey = 'cached_recipes';
 
   static Future<List<Recipe>> generate(List<FoodItem> stock, {String? focus}) async {
