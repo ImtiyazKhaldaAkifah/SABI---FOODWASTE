@@ -17,11 +17,8 @@ class _RecipeScreenState extends State<RecipeScreen> {
   String _selectedSubCategory = 'Semua';
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  
-  // 🔴 CONTROLLER BUAT INPUT BAHAN MANUAL
   final TextEditingController _focusController = TextEditingController(); 
 
-  // Daftar menu di sidebar kiri
   final List<Map<String, dynamic>> _filters = [
     {'name': 'Semua Resep', 'icon': Icons.menu_book},
     {'name': 'Favorit', 'icon': Icons.favorite},
@@ -31,7 +28,6 @@ class _RecipeScreenState extends State<RecipeScreen> {
     {'name': 'Tipe Masakan', 'icon': Icons.restaurant},
   ];
 
-  // Daftar sub-filter yang muncul sesuai menu yang dipilih
   List<String> get _subFilters {
     switch (_selectedCategory) {
       case 'Pilih Bahan':
@@ -47,18 +43,29 @@ class _RecipeScreenState extends State<RecipeScreen> {
     }
   }
 
+  // 🔴 FUNGSI BARU: Nentuin emoji berdasarkan judul resep
+  String _getFoodEmoji(String title) {
+    final t = title.toLowerCase();
+    if (t.contains('ayam')) return '🍗';
+    if (t.contains('ikan')) return '🐟';
+    if (t.contains('daging') || t.contains('sapi')) return '🥩';
+    if (t.contains('telur')) return '🥚';
+    if (t.contains('sayur') || t.contains('kangkung') || t.contains('bayam')) return '🥬';
+    if (t.contains('tahu') || t.contains('tempe')) return '🍢';
+    if (t.contains('mie') || t.contains('nasi')) return '🍜';
+    if (t.contains('kentang')) return '🥔';
+    if (t.contains('sup') || t.contains('kuah')) return '🍲';
+    return '🍲'; // Default
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
 
-    // 🔴 LOGIKA FILTER RESEP 🔴
     final filteredRecipes = s.recipes.where((recipe) {
-      // 1. Filter berdasarkan Search Bar
       if (_searchQuery.isNotEmpty && !recipe.title.toLowerCase().contains(_searchQuery.toLowerCase())) {
         return false;
       }
-
-      // 2. Filter berdasarkan Sidebar Kiri
       if (_selectedCategory == 'Favorit') {
         if (!s.favorites.contains(recipe.id)) return false;
       } 
@@ -99,8 +106,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
           if (!match) return false;
         }
       }
-
-      return true; // Lolos semua filter
+      return true;
     }).toList();
 
     return Scaffold(
@@ -117,7 +123,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                   Text('RESEP MASAKAN', style: ts(size: 24, w: FontWeight.w900)),
                   const SizedBox(height: 16),
                   
-                  // 🔴 KOLOM KETIK BAHAN MANUAL (REQ MENU) 🔴
+                  // 🔴 KOLOM KETIK BAHAN MANUAL
                   TextField(
                     controller: _focusController,
                     decoration: InputDecoration(
@@ -132,10 +138,9 @@ class _RecipeScreenState extends State<RecipeScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // 🔴 TOMBOL AI (UDAH NYAMBUNG KE KOLOM KETIK) 🔴
+                  // 🔴 TOMBOL AI
                   ElevatedButton.icon(
                     onPressed: () {
-                      // Ambil teks, kalau kosong kirim null (biar pakai stok otomatis)
                       final focus = _focusController.text.trim().isEmpty ? null : _focusController.text.trim();
                       s.generateAi(focus: focus);
                     },
@@ -180,7 +185,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                               onTap: () {
                                 setState(() {
                                   _selectedCategory = cat['name'];
-                                  _selectedSubCategory = 'Semua'; // Reset sub-filter tiap ganti menu
+                                  _selectedSubCategory = 'Semua';
                                 });
                               },
                               child: Container(
@@ -209,7 +214,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                         ),
                       ),
 
-                      // 2. AREA KONTEN (SEARCH & LIST RESEP)
+                      // 2. AREA KONTEN
                       Expanded(
                         child: Column(
                           children: [
@@ -232,7 +237,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
                               ),
                             ),
 
-                            // Sub-Filter (Muncul kalau pilih menu selain 'Semua Resep')
+                            // Sub-Filter
                             if (_subFilters.isNotEmpty)
                               SizedBox(
                                 height: 40,
@@ -266,19 +271,16 @@ class _RecipeScreenState extends State<RecipeScreen> {
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           children: [
-                                            // 1. KALAU LAGI LOADING
                                             if (s.aiLoading) ...[
                                               const CircularProgressIndicator(color: C.teal),
                                               const SizedBox(height: 16),
                                               Text('AI sedang memasak resep...', style: ts(size: 14, w: FontWeight.w700, color: C.teal)),
                                             ] 
-                                            // 2. KALAU ADA ERROR
                                             else if (s.aiError != null) ...[
                                               Icon(Icons.error_outline, size: 50, color: Colors.red.shade300),
                                               const SizedBox(height: 12),
                                               Text(s.aiError!, textAlign: TextAlign.center, style: ts(size: 14, w: FontWeight.w700, color: Colors.red)),
                                             ] 
-                                            // 3. KALAU BELUM ADA DATA SAMA SEKALI
                                             else ...[
                                               Icon(Icons.restaurant_menu, size: 50, color: Colors.grey.shade300),
                                               const SizedBox(height: 12),
@@ -314,9 +316,8 @@ class _RecipeScreenState extends State<RecipeScreen> {
     );
   }
 
-  // 🔴 DESAIN KARTU RESEP 🔴
+  // 🔴 DESAIN KARTU RESEP (INI YANG KITA UBAH GAMBARNYA)
   Widget _buildRecipeCard(BuildContext context, Recipe recipe, AppState s) {
-    // Hitung bahan yang nggak ada di stok (buat ditampilin di card)
     int missingCount = 0;
     for (var ing in recipe.ingredients) {
       if (s.stockFor(ing.name) == null) missingCount++;
@@ -335,7 +336,7 @@ class _RecipeScreenState extends State<RecipeScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gambar Makanan
+            // 🟢 GAMBAR MAKANAN (GANTI PAKE EMOJI KALAU GAGAL)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
@@ -343,7 +344,15 @@ class _RecipeScreenState extends State<RecipeScreen> {
                 width: 90,
                 height: 90,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(width: 90, height: 90, color: Colors.grey.shade200, child: const Icon(Icons.restaurant)),
+                // 🔴 INI BAGIAN YANG KITA UBAH
+                errorBuilder: (_, __, ___) => Container(
+                  width: 90, 
+                  height: 90, 
+                  color: Colors.grey.shade100,
+                  child: Center(
+                    child: Text(_getFoodEmoji(recipe.title), style: const TextStyle(fontSize: 40)),
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -356,7 +365,6 @@ class _RecipeScreenState extends State<RecipeScreen> {
                   Text(recipe.title, style: ts(size: 14, w: FontWeight.w900), maxLines: 2, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 6),
                   
-                  // Badge Waktu & Kesulitan
                   Row(
                     children: [
                       Icon(Icons.timer, size: 12, color: Colors.grey.shade600),
@@ -372,7 +380,6 @@ class _RecipeScreenState extends State<RecipeScreen> {
                   ),
                   const SizedBox(height: 6),
                   
-                  // Info Bahan Kurang
                   Row(
                     children: [
                       Icon(Icons.info_outline, size: 12, color: missingCount > 0 ? Colors.red : Colors.green),
@@ -385,7 +392,6 @@ class _RecipeScreenState extends State<RecipeScreen> {
                   ),
                   const SizedBox(height: 10),
                   
-                  // Tombol Lihat Resep
                   SizedBox(
                     width: double.infinity,
                     height: 28,

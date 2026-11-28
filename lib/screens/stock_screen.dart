@@ -15,16 +15,18 @@ class StockScreen extends StatefulWidget {
 class _StockScreenState extends State<StockScreen> {
   String _selectedCategory = 'Semua Stok';
 
+  // 🔴 DAFTAR KATEGORI SUDAH DIPERBARUI
+  // - 'Tepung' dihapus
+  // - 'Lain-lain' diganti emoji jadi kotak 📦 (atau kamu bisa ganti sesuai selera)
   final List<Map<String, dynamic>> _categories = [
     {'name': 'Semua Stok', 'emoji': '📦'},
     {'name': 'Sayuran', 'emoji': '🥦'},
     {'name': 'Buah', 'emoji': '🍎'},
     {'name': 'Protein', 'emoji': '🍗'},
     {'name': 'Olahan Susu', 'emoji': '🥛'},
-    {'name': 'Tepung', 'emoji': '🌾'},
     {'name': 'Karbohidrat', 'emoji': '🍚'},
     {'name': 'Bumbu', 'emoji': '🧂'},
-    {'name': 'Lain-lain', 'emoji': '🍽️'},
+    {'name': 'Lain-lain', 'emoji': '🛒'}, // 🔴 Emoji diganti jadi troli belanja
   ];
 
   @override
@@ -48,19 +50,6 @@ class _StockScreenState extends State<StockScreen> {
                 children: [
                   Text('DAFTAR', style: ts(size: 14, w: FontWeight.w700)),
                   Text('STOK MAKANANKU', style: ts(size: 24, w: FontWeight.w900)),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _actionButton('TAMBAH STOK', () {
-                        widget.onTab(2); // Pindah ke tab Input
-                      }),
-                      const SizedBox(width: 12),
-                      _actionButton('EDIT STOK', () {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ketuk langsung item di bawah untuk mengedit')));
-                      }),
-                    ],
-                  ),
                 ],
               ),
             ),
@@ -154,10 +143,7 @@ class _StockScreenState extends State<StockScreen> {
                                       separatorBuilder: (_, __) => const Divider(height: 1, color: Colors.black12),
                                       itemBuilder: (context, index) {
                                         final item = filteredItems[index];
-                                        return InkWell(
-                                          onTap: () => _showEditForm(context, item),
-                                          child: _buildStockItem(item),
-                                        );
+                                        return _buildStockItem(context, item);
                                       },
                                     ),
                             ),
@@ -175,7 +161,7 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  Widget _buildStockItem(FoodItem item) {
+  Widget _buildStockItem(BuildContext context, FoodItem item) {
     Color dayColor = Colors.green;
     if (item.daysLeft <= 2) {
       dayColor = Colors.red;
@@ -183,11 +169,24 @@ class _StockScreenState extends State<StockScreen> {
       dayColor = Colors.orange;
     }
 
+    // Fungsi otomatis emoji (biar gak piring)
+    String getEmoji(String name) {
+      final lower = name.toLowerCase();
+      if (lower.contains('mangga')) return '🥭';
+      if (lower.contains('apel')) return '🍎';
+      if (lower.contains('kentang')) return '🥔';
+      if (lower.contains('jagung')) return '🌽';
+      if (lower.contains('ikan')) return '🐟';
+      if (lower.contains('daging')) return '🥩';
+      if (lower.contains('ayam')) return '🍗';
+      return '🍽️';
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Text(item.emoji, style: const TextStyle(fontSize: 28)),
+          Text(getEmoji(item.name), style: const TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -196,27 +195,46 @@ class _StockScreenState extends State<StockScreen> {
                 Text(item.name, style: ts(size: 14, w: FontWeight.w800)),
                 const SizedBox(height: 2),
                 Text('${item.amount} ${item.unit}', style: ts(size: 12, w: FontWeight.w500, color: Colors.grey.shade600)),
-                // 🔴 TAMBAHKAN BARIS INI BUAT NAMPILIN TANGGAL INPUT
                 Text(
-                  'Dibeli: ${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}', 
+                  'Tgl Input: ${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}', 
                   style: ts(size: 10, color: Colors.grey.shade500),
                 ),
               ],
             ),
           ),
+          
+          // TAMPILAN HARI
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('${item.daysLeft}', style: ts(size: 16, w: FontWeight.w900, color: dayColor)),
-              Text('Hari Lagi', style: ts(size: 10, w: FontWeight.w600, color: dayColor)),
+              if (item.daysLeft < 0) ...[
+                Text('KADALUARSA', style: ts(size: 12, w: FontWeight.w900, color: Colors.red)),
+                Text('${item.daysLeft.abs()} hari lalu', style: ts(size: 10, w: FontWeight.w600, color: Colors.red)),
+              ] else ...[
+                Text('${item.daysLeft}', style: ts(size: 16, w: FontWeight.w900, color: dayColor)),
+                Text('Hari Lagi', style: ts(size: 10, w: FontWeight.w600, color: dayColor)),
+              ],
             ],
+          ),
+          
+          // 🔴 TOMBOL EDIT & HAPUS
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.blue, size: 20),
+            onPressed: () => _showEditForm(context, item),
+            tooltip: 'Edit',
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+            onPressed: () => _showDeleteConfirm(context, item),
+            tooltip: 'Hapus',
           ),
         ],
       ),
     );
   }
 
-  // 🔴 FORM POP-UP BUAT NGEDIT 🔴
+  // 🔴 FORM POP-UP EDIT
   void _showEditForm(BuildContext context, FoodItem item) {
     final nameController = TextEditingController(text: item.name);
     final amountController = TextEditingController(text: item.amount.toString());
@@ -250,8 +268,8 @@ class _StockScreenState extends State<StockScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
-                        context.read<AppState>().removeItem(item);
                         Navigator.pop(context);
+                        _showDeleteConfirm(context, item);
                       },
                       icon: const Icon(Icons.delete, color: Colors.red),
                       label: Text('Hapus', style: ts(color: Colors.red, w: FontWeight.w700)),
@@ -277,7 +295,7 @@ class _StockScreenState extends State<StockScreen> {
                           category: item.category,
                           emoji: item.emoji,
                           expiry: item.expiry,
-                          createdAt: item.createdAt, // 🔴 TAMBAHAN
+                          createdAt: item.createdAt,
                         );
                         
                         context.read<AppState>().updateItem(updatedItem);
@@ -302,16 +320,28 @@ class _StockScreenState extends State<StockScreen> {
     );
   }
 
-  Widget _actionButton(String text, VoidCallback onTap) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: C.teal,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-        elevation: 0,
+  // 🔴 FUNGSI KONFIRMASI HAPUS
+  void _showDeleteConfirm(BuildContext context, FoodItem item) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Stok?'),
+        content: Text('Apakah kamu yakin ingin menghapus ${item.name}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<AppState>().removeItem(item);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Stok dihapus!')));
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
-      child: Text(text, style: ts(size: 12, w: FontWeight.w800, color: Colors.white)),
     );
   }
 }

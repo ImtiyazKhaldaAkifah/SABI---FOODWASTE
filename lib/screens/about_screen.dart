@@ -121,7 +121,7 @@ class _AboutScreenState extends State<AboutScreen> with SingleTickerProviderStat
                     // Developer
                     Text('Dikembangkan dengan sepenuh hati ❤️', style: ts(size: 13, w: FontWeight.w500, color: Colors.grey.shade700)),
                     const SizedBox(height: 8),
-                    Text('Oleh: TIMSES SABI', style: ts(size: 16, w: FontWeight.w900)),
+                    Text('Oleh: SABI Development Team', style: ts(size: 16, w: FontWeight.w900)),
                     const SizedBox(height: 4),
                     Text('2026', style: ts(size: 12, w: FontWeight.w600, color: Colors.grey)),
                   ],

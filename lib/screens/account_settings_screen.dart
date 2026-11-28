@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:image_picker/image_picker.dart'; // 🔴 TAMBAHAN
-import 'package:shared_preferences/shared_preferences.dart'; // 🔴 TAMBAHAN
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/theme.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
@@ -14,33 +14,55 @@ class AccountSettingsScreen extends StatefulWidget {
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   final _nameController = TextEditingController();
-  final _passController = TextEditingController();
+  // 🔴 CONTROLLER BARU UNTUK 3 KOLOM PASSWORD
+  final _oldPassController = TextEditingController();
+  final _newPassController = TextEditingController();
+  final _confirmPassController = TextEditingController();
+  
   bool _isLoadingName = false;
   bool _isLoadingPass = false;
 
-  // 🔴 VARIABEL BUAT FOTO
   File? _imageFile;
   final ImagePicker _picker = ImagePicker();
 
-  final user = Supabase.instance.client.auth.currentUser;
+  User? get user => Supabase.instance.client.auth.currentUser;
 
   @override
   void initState() {
     super.initState();
-    _nameController.text = user?.userMetadata?['full_name'] ?? '';
-    _loadProfileImage(); // Panggil fungsi load foto
+    _nameController.text = user?.userMetadata?['full_name'] ?? user?.userMetadata?['name'] ?? '';
+    _loadProfileImage();
   }
 
-  // 🔴 FUNGSI NGAMBIL FOTO DARI MEMORI
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    try {
+      final route = ModalRoute.of(context);
+      if (route is PageRoute) {
+        // routeObserver.subscribe(this, route);
+      }
+    } catch (_) {}
+  }
+
+  void didPopNext() {
+    _loadProfileImage();
+  }
+
   Future<void> _loadProfileImage() async {
     final prefs = await SharedPreferences.getInstance();
     final path = prefs.getString('profile_image_path');
-    if (path != null && File(path).existsSync()) {
-      setState(() => _imageFile = File(path));
+    if (mounted) {
+      setState(() {
+        if (path != null && File(path).existsSync()) {
+          _imageFile = File(path);
+        } else {
+          _imageFile = null;
+        }
+      });
     }
   }
 
-  // 🔴 FUNGSI MILIH FOTO DARI GALERI
   Future<void> _pickImage() async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -55,13 +77,14 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mengambil gambar: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengambil gambar: $e')),
+        );
+      }
     }
   }
 
-  // Fungsi Simpan Nama
   Future<void> _saveName() async {
     final newName = _nameController.text.trim();
     if (newName.isEmpty) return;
@@ -71,6 +94,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       await Supabase.instance.client.auth.updateUser(
         UserAttributes(data: {'full_name': newName}),
       );
+      await Supabase.instance.client.auth.refreshSession();
+      if (mounted) setState(() {});
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Nama berhasil diubah!')),
@@ -83,24 +109,55 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         );
       }
     }
-    setState(() => _isLoadingName = false);
+    if (mounted) setState(() => _isLoadingName = false);
   }
 
-  // Fungsi Ganti Password
+  // ================= FUNGSI GANTI PASSWORD (3 KOLOM) =================
   Future<void> _showChangePasswordDialog() async {
-    _passController.clear();
+    _oldPassController.clear();
+    _newPassController.clear();
+    _confirmPassController.clear();
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text('Ganti Kata Sandi', style: ts(size: 18, w: FontWeight.w900)),
-          content: TextField(
-            controller: _passController,
-            obscureText: true,
-            decoration: InputDecoration(
-              hintText: 'Masukkan kata sandi baru',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 1. Password Lama
+                TextField(
+                  controller: _oldPassController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan kata sandi lama',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 2. Password Baru
+                TextField(
+                  controller: _newPassController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan kata sandi baru',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 3. Konfirmasi Password Baru
+                TextField(
+                  controller: _confirmPassController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: 'Konfirmasi kata sandi baru',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
             ),
           ),
           actions: [
@@ -110,32 +167,60 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final newPass = _passController.text;
-                if (newPass.length < 6) {
+                final oldPass = _oldPassController.text;
+                final newPass = _newPassController.text;
+                final confirmPass = _confirmPassController.text;
+
+                // Validasi
+                if (oldPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Kata sandi minimal 6 karakter!')),
+                    const SnackBar(content: Text('Semua kolom harus diisi!')),
                   );
                   return;
                 }
+                if (newPass.length < 6) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Kata sandi baru minimal 6 karakter!')),
+                  );
+                  return;
+                }
+                if (newPass != confirmPass) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Konfirmasi kata sandi tidak cocok!')),
+                  );
+                  return;
+                }
+
                 Navigator.pop(context);
                 setState(() => _isLoadingPass = true);
+
                 try {
+                  // 🔴 LANGKAH 1: VERIFIKASI PASSWORD LAMA
+                  // Kita coba login ulang pakai email & password lama
+                  await Supabase.instance.client.auth.signInWithPassword(
+                    email: user!.email!,
+                    password: oldPass,
+                  );
+
+                  // 🔴 LANGKAH 2: UPDATE PASSWORD BARU
                   await Supabase.instance.client.auth.updateUser(
                     UserAttributes(password: newPass),
                   );
+
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Kata sandi berhasil diubah!')),
                     );
                   }
                 } catch (e) {
+                  // Kalau password lama salah, error-nya bakal ketangkep di sini
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Gagal: $e')),
+                      SnackBar(content: Text('Gagal: Kata sandi lama mungkin salah.')),
                     );
                   }
                 }
-                setState(() => _isLoadingPass = false);
+                if (mounted) setState(() => _isLoadingPass = false);
               },
               style: ElevatedButton.styleFrom(backgroundColor: C.teal),
               child: Text('SIMPAN', style: ts(color: Colors.white, w: FontWeight.w700)),
@@ -148,7 +233,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final userName = user?.userMetadata?['full_name'] ?? 'Pengguna SABI';
+    final userName = user?.userMetadata?['full_name'] ?? user?.userMetadata?['name'] ?? 'Pengguna SABI';
 
     return Scaffold(
       backgroundColor: C.bgBottom,
@@ -164,12 +249,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- HEADER PROFIL KECIL (BISA DIKLIK) ---
+              // --- HEADER PROFIL KECIL ---
               Center(
                 child: Column(
                   children: [
                     GestureDetector(
-                      onTap: _pickImage, // 🔴 BISA DIKLIK BUAT GANTI FOTO
+                      onTap: _pickImage,
                       child: Stack(
                         children: [
                           Container(
@@ -177,7 +262,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.orange.shade100),
                             child: ClipOval(
                               child: _imageFile != null
-                                  ? Image.file(_imageFile!, fit: BoxFit.cover)
+                                  ? Image.file(_imageFile!, fit: BoxFit.cover, key: ValueKey(_imageFile!.path))
                                   : Image.network(
                                       'https://api.dicebear.com/7.x/avataaars/png?seed=$userName',
                                       fit: BoxFit.cover,
@@ -185,7 +270,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                     ),
                             ),
                           ),
-                          // Ikon kamera kecil
                           Positioned(
                             bottom: 0, right: 0,
                             child: Container(
@@ -239,9 +323,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           backgroundColor: C.teal,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: _isLoadingName 
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : Text('SIMPAN NAMA', style: ts(size: 13, w: FontWeight.w900, color: Colors.white)),
+                        child: _isLoadingName
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : Text('SIMPAN NAMA', style: ts(size: 13, w: FontWeight.w900, color: Colors.white)),
                       ),
                     ),
                   ],
@@ -262,9 +346,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   leading: const Icon(Icons.lock_outline, color: Colors.black87),
                   title: Text('Ganti Kata Sandi', style: ts(size: 14, w: FontWeight.w700)),
                   subtitle: Text('Amankan akunmu secara berkala', style: ts(size: 11, color: Colors.grey)),
-                  trailing: _isLoadingPass 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.chevron_right, color: Colors.grey),
+                  trailing: _isLoadingPass
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.chevron_right, color: Colors.grey),
                   onTap: _isLoadingPass ? null : _showChangePasswordDialog,
                 ),
               ),

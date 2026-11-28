@@ -1,65 +1,148 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart'; // 🔴 Import buat WA
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../services/app_state.dart';
 import 'recipe_detail_screen.dart';
+import 'faq_screen.dart'; // 🔴 Import halaman FAQ kamu
+import '../main.dart'; 
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.onTab});
-
   final void Function(int) onTab;
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with RouteAware {
+  File? _profileImage;
+
+  // 🔴 GANTI NOMOR INI DENGAN NOMOR WA ADMIN KAMU
+  // Gunakan format 62 (tanpa tanda + atau 0 di depan)
+  final String _adminWaNumber = '6282325875785'; 
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileImage();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    _loadProfileImage(); 
+  }
+
+  Future<void> _loadProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path = prefs.getString('profile_image_path');
+    if (mounted) {
+      setState(() {
+        if (path != null && File(path).existsSync()) {
+          _profileImage = File(path);
+        } else {
+          _profileImage = null;
+        }
+      });
+    }
+  }
+
+  // 🔴 FUNGSI BARU: Buka WhatsApp
+  Future<void> _openWhatsApp() async {
+    final Uri url = Uri.parse('https://wa.me/62325975785?text=Halo%20Admin%20SABI,%20saya%20ingin%20memberi%20masukan.');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tidak bisa membuka WhatsApp.')),
+        );
+      }
+    }
+  }
+
+  String _getEmojiForItem(String name) {
+    final lowerName = name.toLowerCase();
+    if (lowerName.contains('mangga')) return '🥭';
+    if (lowerName.contains('apel')) return '🍎';
+    if (lowerName.contains('kentang')) return '🥔';
+    if (lowerName.contains('jagung')) return '🌽';
+    if (lowerName.contains('ikan')) return '🐟';
+    if (lowerName.contains('daging')) return '🥩';
+    if (lowerName.contains('ayam')) return '🍗';
+    if (lowerName.contains('telur')) return '🥚';
+    if (lowerName.contains('susu')) return '🥛';
+    if (lowerName.contains('sayur')) return '🥦';
+    if (lowerName.contains('bayam')) return '🥬';
+    if (lowerName.contains('wortel')) return '🥕';
+    if (lowerName.contains('tomat')) return '🍅';
+    if (lowerName.contains('bawang')) return '🧅';
+    if (lowerName.contains('cabai')) return '🌶️';
+    if (lowerName.contains('beras')) return '🍚';
+    if (lowerName.contains('roti')) return '🍞';
+    if (lowerName.contains('keju')) return '🧀';
+    if (lowerName.contains('pisang')) return '🍌';
+    if (lowerName.contains('jeruk')) return '🍊';
+    return '🍽️'; 
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
-
-    // Ambil nama user dari database
     final user = Supabase.instance.client.auth.currentUser;
-        // Cek full_name dulu, kalau kosong cek 'name', kalau dua-duanya kosong baru 'Pengguna'
     final fullName = user?.userMetadata?['full_name'] ?? user?.userMetadata?['name'] ?? 'Pengguna';
-    final firstName = fullName.split(' ')[0]; // Ambil nama depan aja
+    final firstName = fullName.split(' ')[0];
 
     return Scaffold(
       backgroundColor: C.bgBottom,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: GradientBg(child: const SizedBox.expand()),
-          ),
-          
+          Positioned.fill(child: GradientBg(child: const SizedBox.expand())),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- 1. HEADER DENGAN SAPAAN (RATA KIRI & AVATAR) ---
+                  // --- 1. HEADER DENGAN SAPAAN & AVATAR (SINKRON) ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Halo, $firstName! 👋', 
-                            style: ts(size: 18, w: FontWeight.w900, color: Colors.black87),
-                          ),
+                          Text('Halo, $firstName! 👋', style: ts(size: 18, w: FontWeight.w900, color: Colors.black87)),
                           const SizedBox(height: 4),
-                          Text(
-                            'Mau masak apa hari ini?',
-                            style: ts(size: 12, w: FontWeight.w600, color: Colors.grey.shade600),
-                          ),
+                          Text('Mau masak apa hari ini?', style: ts(size: 12, w: FontWeight.w600, color: Colors.grey.shade600)),
                         ],
                       ),
-                      // Avatar Inisial Nama
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: C.teal,
-                        child: Text(
-                          firstName.isNotEmpty ? firstName[0].toUpperCase() : 'U',
-                          style: ts(size: 18, w: FontWeight.w900, color: Colors.white),
+                      // Avatar Sinkron
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.orange.shade100),
+                        child: ClipOval(
+                          child: _profileImage != null
+                              ? Image.file(_profileImage!, fit: BoxFit.cover, key: ValueKey(_profileImage!.path))
+                              : Center(
+                                  child: Text(
+                                    firstName.isNotEmpty ? firstName[0].toUpperCase() : 'U',
+                                    style: ts(size: 18, w: FontWeight.w900, color: C.teal),
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -97,17 +180,22 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // --- 3. TOMBOL MENU ---
+                  // --- 3. TOMBOL MENU (UDAH DISAMBUNGIN) ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _actionButton('BERI MASUKAN', () {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur Beri Masukan segera hadir!')));
+                        // 🔴 BUKA WHATSAPP ADMIN
+                        _openWhatsApp();
                       }),
                       _actionButton('FAQ', () {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fitur FAQ segera hadir!')));
+                        // 🔴 PINDAH KE HALAMAN FAQ
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const FaqScreen()),
+                        );
                       }),
-                      _actionButton('INPUT STOK', () => onTab(2)),
+                      _actionButton('INPUT STOK', () => widget.onTab(2)),
                     ],
                   ),
                   const SizedBox(height: 30),
@@ -118,7 +206,7 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Text('DAFTAR STOK MAKANANKU', style: ts(size: 16, w: FontWeight.w900)),
                       GestureDetector(
-                        onTap: () => onTab(1),
+                        onTap: () => widget.onTab(1),
                         child: Text('Lihat Semua', style: ts(size: 14, w: FontWeight.w700, color: C.teal)),
                       ),
                     ],
@@ -147,7 +235,7 @@ class HomeScreen extends StatelessWidget {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(item.emoji, style: const TextStyle(fontSize: 40)),
+                                Text(_getEmojiForItem(item.name), style: const TextStyle(fontSize: 40)),
                                 const SizedBox(height: 8),
                                 Text(item.name, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: ts(size: 13, w: FontWeight.w800)),
                                 Text('${item.amount} ${item.unit}', style: ts(size: 12, color: Colors.grey.shade600, w: FontWeight.w600)),
@@ -187,9 +275,20 @@ class HomeScreen extends StatelessWidget {
                             padding: const EdgeInsets.only(bottom: 6),
                             child: Row(
                               children: [
-                                Text(item.emoji, style: const TextStyle(fontSize: 18)),
+                                Text(_getEmojiForItem(item.name), style: const TextStyle(fontSize: 18)),
                                 const SizedBox(width: 10),
-                                Expanded(child: Text('${item.name} (${item.daysLeft} hari lagi)', style: ts(size: 13, w: FontWeight.w700))),
+                                Expanded(
+                                  child: Text(
+                                    item.daysLeft < 0
+                                        ? '${item.name} (Kadaluarsa ${item.daysLeft.abs()} hari lalu)'
+                                        : '${item.name} (${item.daysLeft} hari lagi)',
+                                    style: ts(
+                                      size: 13,
+                                      w: FontWeight.w700,
+                                      color: item.daysLeft < 0 ? Colors.red.shade900 : Colors.black87,
+                                    ),
+                                  ),
+                                ),
                                 Text('${item.amount} ${item.unit}', style: ts(size: 13, w: FontWeight.w900)),
                               ],
                             ),
@@ -244,7 +343,9 @@ class HomeScreen extends StatelessWidget {
                                       'https://image.pollinations.ai/prompt/food%20photography%20of%20${Uri.encodeComponent(recipe.title)}?width=300&height=200&nologo=true',
                                       fit: BoxFit.cover,
                                       width: double.infinity,
-                                      errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.restaurant, color: Colors.grey, size: 40)),
+                                      errorBuilder: (_, __, ___) => Center(
+                                        child: Text(_getFoodEmoji(recipe.title), style: const TextStyle(fontSize: 40)),
+                                      ),
                                     ),
                                   ),
                                   Padding(
@@ -277,7 +378,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   Center(
                     child: TextButton(
-                      onPressed: () => onTab(3), 
+                      onPressed: () => widget.onTab(3), 
                       child: Text('lihat resep lainnya', style: ts(size: 14, color: Colors.grey.shade800, w: FontWeight.w700).copyWith(decoration: TextDecoration.underline)),
                     ),
                   ),
@@ -289,6 +390,20 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _getFoodEmoji(String title) {
+    final t = title.toLowerCase();
+    if (t.contains('ayam')) return '🍗';
+    if (t.contains('ikan')) return '🐟';
+    if (t.contains('daging') || t.contains('sapi')) return '🥩';
+    if (t.contains('telur')) return '🥚';
+    if (t.contains('sayur') || t.contains('kangkung') || t.contains('bayam')) return '🥬';
+    if (t.contains('tahu') || t.contains('tempe')) return '🍢';
+    if (t.contains('mie') || t.contains('nasi')) return '🍜';
+    if (t.contains('kentang')) return '🥔';
+    if (t.contains('sup') || t.contains('kuah')) return '🍲';
+    return '🍲'; 
   }
 
   Widget _actionButton(String text, VoidCallback onTap) {

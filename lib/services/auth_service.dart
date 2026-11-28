@@ -11,8 +11,23 @@ class AuthService {
     if (!AppConfig.ready) return _notReady;
     if (!email.contains('@')) return 'Daftar pakai email dulu ya (nomor HP belum didukung)';
     if (pass.length < 6) return 'Kata sandi minimal 6 karakter';
+    
     try {
-      final res = await _c.auth.signUp(email: email, password: pass, data: {'name': name});
+      final res = await _c.auth.signUp(
+        email: email, 
+        password: pass, 
+        data: {'name': name, 'full_name': name} // 🔴 Tambahkan 'full_name' juga buat jaga-jaga
+      );
+
+      // 🔴 TAMBAHKAN KODE INI UNTUK MENYIMPAN KE TABEL PROFILES
+      if (res.user != null) {
+        await _c.from('profiles').insert({
+          'id': res.user!.id,
+          'email': email,
+          'full_name': name,
+        });
+      }
+
       if (res.session == null) return 'Akun dibuat. Cek email untuk konfirmasi, lalu masuk.';
       return null;
     } on AuthException catch (e) {
@@ -39,7 +54,10 @@ class AuthService {
     if (!AppConfig.ready) return null;
     final u = _c.auth.currentUser;
     if (u == null) return null;
-    return {'id': u.email ?? '', 'name': '${u.userMetadata?['name'] ?? 'Pengguna'}'};
+    return {
+      'id': u.email ?? '', 
+      'name': '${u.userMetadata?['full_name'] ?? u.userMetadata?['name'] ?? 'Pengguna'}'
+    };
   }
 
   static Future<void> logout() async {

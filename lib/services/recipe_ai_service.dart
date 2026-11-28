@@ -1,4 +1,4 @@
-import 'dart:async'; 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
@@ -6,31 +6,47 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class RecipeAiService {
-  static const _key = 'API KEY GOOGLE GEMINI ANDA'; // 🔴 ISI DENGAN API KEY GOOGLE GEMINI ANDA
-  // 🔴 MODEL SUDAH DIPERBAIKI
-  static const _models = ['gemini-1.5-flash-latest', 'gemini-1.5-flash']; 
+  // 🔑 Pastikan key ini BELUM PERNAH DI-RENAME di Google AI Studio
+  static const _key = 'api key'; 
+  
+  // 🟢 Gunakan model yang valid
+  static const _models = ['gemini-3.6-flash'];
   static const _cacheKey = 'cached_recipes';
 
   static Future<List<Recipe>> generate(List<FoodItem> stock, {String? focus}) async {
-    if (_key.isEmpty) throw Exception('GEMINI_API_KEY belum diisi.');
-    
-    final stockText = (stock.toList()..sort((a, b) => a.daysLeft.compareTo(b.daysLeft)))
-        .map((e) => '${e.name} (${e.amount} ${e.unit}, ${e.daysLeft} hari lagi kadaluarsa)')
-        .join('; ');
-        
-    final prompt = '''
-Stok bahan: $stockText.
-${focus != null ? 'Fokus pada bahan: $focus.' : 'Prioritaskan bahan yang paling cepat kadaluarsa.'}
+    if (_key.isEmpty || _key == 'MASUKKAN_KEY_BARU_DISINI') {
+      throw Exception('API Key belum diisi atau masih teks bohongan!');
+    }
+
+    String prompt;
+    if (focus != null && focus.isNotEmpty) {
+      prompt = '''
+User meminta resep dengan bahan utama: "$focus".
+TUGAS UTAMA: Buat 3 resep sederhana dan murah yang menggunakan "$focus" sebagai bahan utama.
+Balas HANYA JSON array dengan format:
+[{"title":"","difficulty":"Mudah|Sedang|Sulit","minutes":15,"servings":2,
+"ingredients":[{"name":"","qty":""}],"steps":[""],"tips":[""]}]''';
+    } else {
+      final stockText = (stock.toList()..sort((a, b) => a.daysLeft.compareTo(b.daysLeft)))
+          .map((e) => '${e.name} (${e.amount} ${e.unit}, ${e.daysLeft} hari lagi kadaluarsa)')
+          .join('; ');
+      prompt = '''
+Stok bahan di kulkas: $stockText.
+Prioritaskan bahan yang paling cepat kadaluarsa.
 Buat 3 resep sederhana dan murah.
 Balas HANYA JSON array dengan format:
 [{"title":"","difficulty":"Mudah|Sedang|Sulit","minutes":15,"servings":2,
 "ingredients":[{"name":"","qty":""}],"steps":[""],"tips":[""]}]''';
+    }
 
     for (final model in _models) {
-      for (var attempt = 0; attempt < 3; attempt++) {
+      for (var attempt = 0; attempt < 2; attempt++) {
         try {
+          final url = Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent');
+          
+          // 🟢 KUNCI: Kirim key HANYA lewat header x-goog-api-key
           final res = await http.post(
-            Uri.parse('https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent'),
+            url,
             headers: {
               'Content-Type': 'application/json',
               'x-goog-api-key': _key,
@@ -38,13 +54,13 @@ Balas HANYA JSON array dengan format:
             body: jsonEncode({
               'systemInstruction': {
                 'parts': [
-                  {'text': 'Kamu asisten masak anak kos. ATURAN MUTLAK: WAJIB jawab HANYA pakai Bahasa Indonesia. DILARANG KERAS pakai bahasa Inggris untuk isi teksnya (judul, bahan, langkah, tips).'}
+                  {'text': 'Kamu asisten masak anak kos. ATURAN MUTLAK: 1) WAJIB jawab HANYA pakai Bahasa Indonesia. 2) DILARANG KERAS pakai bahasa Inggris. 3) SELALU ikuti perintah user.'}
                 ]
               },
               'contents': [{'parts': [{'text': prompt}]}],
               'generationConfig': {'responseMimeType': 'application/json'},
             }),
-          ).timeout(const Duration(seconds: 30)); 
+          ).timeout(const Duration(seconds: 30));
 
           if (res.statusCode == 200) {
             final text = jsonDecode(res.body)['candidates'][0]['content']['parts'][0]['text'] as String;
@@ -65,19 +81,17 @@ Balas HANYA JSON array dengan format:
             continue; 
           }
 
-          // Kalau error selain 503, kita print isi error dari Google biar tau masalahnya
-          print('ERROR DARI GOOGLE: ${res.body}');
-          throw Exception('API Google Error (Kode: ${res.statusCode}).');
+          print('=== DETAIL ERROR DARI GOOGLE ===');
+          print('Status: ${res.statusCode}');
+          print('Body: ${res.body}');
+          print('================================');
+          throw Exception('API Google Error (Kode: ${res.statusCode}). Cek detail di terminal.');
 
-        } on TimeoutException {
-          print('Model $model timeout. Mencoba lagi...');
-          if (attempt == 2) throw Exception('Koneksi lambat atau server Google tidak merespon (Timeout). Coba lagi ya!');
-          
         } catch (e) {
-          if (!e.toString().contains('503')) throw Exception(e.toString());
+          print('Percobaan ke-${attempt + 1} untuk model $model gagal: $e');
+          if (attempt == 1) break;
         }
       }
-      print('Model $model gagal setelah 3 percobaan, beralih ke model lain...');
     }
 
     print('Semua model gagal. Mencoba mengambil dari cache lokal...');
@@ -90,7 +104,7 @@ Balas HANYA JSON array dengan format:
           Recipe.fromJson(jsonDecode(cachedList[i]), i)
       ];
     } else {
-      throw Exception('Server AI sedang sibuk dan belum ada resep tersimpan. Coba lagi nanti.');
+      throw Exception('Server AI sedang sibuk / API Key salah. Coba lagi nanti.');
     }
   }
 }
